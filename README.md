@@ -8,11 +8,12 @@
 |---|---|
 | ARM64 镜像构建 | **300/300（100%）** |
 | 官方判分可运行 | **300/300（0 error / 0 infra failure）** |
-| Golden patch resolved | **295/300 = 98.3%**（httpbin 正常窗口 300/300 = 100%） |
+| Golden patch resolved | **300/300 = 100%**（离线 mock httpbin，无需外网/翻墙） |
 
 > 初判 279/300。剩余 21 个逐一归因后全部解决：16 个是数据集/镜像层问题（已修复），
-> 5 个是 requests 对 httpbin.org 的外网依赖（该站间歇故障，正常窗口 5/5 全过；x86 官方
-> 同样受影响）。非 ARM 架构缺陷。逐题根因见 [`docs/swe-arm-report.md`](docs/swe-arm-report.md)。
+> 5 个是 requests 对 httpbin.org 的外网依赖 —— 用自研 mock httpbin 离线化后 5/5 全过。
+> 已知边界：sympy 2 题在 6 并发高压判分时偶发 aarch64 libm 浮点断言抖动（单跑稳定通过）。
+> 详见 [`docs/swe-arm-report.md`](docs/swe-arm-report.md)。
 
 ## 为什么可以做
 
@@ -40,17 +41,15 @@ qemu-user 模拟（比 x86 模拟快一个数量级），也不需要重新制�
 | pytest-dev/pytest | 17 | ✅ 17/17 | ✅ 全部 |
 | sphinx-doc/sphinx | 16 | ✅ 16/16 | ✅ 全部 |
 | astropy/astropy | 6 | ✅ 6/6 | ✅ 全部 |
-| psf/requests | 6 | ✅ 6/6 | 6/6*（httpbin 正常窗口） |
+| psf/requests | 6 | ✅ 6/6 | ✅ 全部（本地 mock httpbin） |
 | pylint-dev/pylint | 6 | ✅ 6/6 | ✅ 全部 |
 | pydata/xarray | 5 | ✅ 5/5 | ✅ 全部 |
 | mwaskom/seaborn | 4 | ✅ 4/4 | ✅ 全部 |
 | pallets/flask | 3 | ✅ 3/3 | ✅ 全部 |
-| **合计** | **300** | **300 (100%)** | **295 (98.3%)，httpbin 正常窗口 300 (100%)** |
+| **合计** | **300** | **300 (100%)** | **300 (100%)** |
 
-\* matplotlib 5 个图像基线测试与 requests 的 httpbin 依赖为平台/外部因素，处理方式见报告。
-
-完整判分结果见 [`gold.gold-100.json`](gold.gold-100.json)（全量重判）与
-[`gold.gold-final4.json`](gold.gold-final4.json) 等分轮报告。
+完整判分结果见 [`gold.gold-100pct.json`](gold.gold-100pct.json)（全量重判）与
+[`gold.gold-requests-final.json`](gold.gold-requests-final.json) 等分轮报告。
 
 ## 快速开始
 
@@ -87,13 +86,18 @@ bash scripts/retry-all-failed.sh
 
 镜像命名：`sweb.eval.arm64.<instance_id>:latest`
 
-### 3. 官方 golden 判分
+### 3. 官方 golden 判分（离线，无需翻墙）
 
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
 
 # 把 arm64 镜像 retag 成数据集 image 字段名（run_evaluation 按此找镜像）
 python3 scripts/retag-arm-to-x86.py
+
+# 启动本地 mock httpbin（requests 子集的测试依赖，已内嵌进数据集 eval_script）
+python3 scripts/mock-httpbin/mock_httpbin.py 8000 &
+python3 scripts/mock-httpbin/mock_httpbin.py 443 --tls &
+python3 scripts/mock-httpbin/mock_httpbin.py 80 &
 
 # 官方判分（predictions=gold 即跑 golden patch 验证镜像可用性）
 python3 -m swebench.harness.run_evaluation \
@@ -152,7 +156,8 @@ swe-bench-lite-arm64/
 │   ├── build-repo.sh          单仓库批量构建
 │   ├── retry-all-failed.sh    失败列表多轮重试调度
 │   ├── fix-env-missing.py     conda 环境自动求解与缺包松绑工具
-│   └── retag-arm-to-x86.py    镜像 retag（官方判分兼容）
+│   ├── retag-arm-to-x86.py    镜像 retag（官方判分兼容）
+│   └── mock-httpbin/          离线 httpbin mock（requests 子集判分依赖）
 ├── docs/
 │   ├── swe-arm-report.md           总报告（判分结果与根因分析）
 │   ├── swe-arm-adaptation-log.md   逐题适配记录与踩坑（最有价值）

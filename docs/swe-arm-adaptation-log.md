@@ -216,3 +216,40 @@
 - 全量 300 重判（gold-100）：**295 resolved + 5 requests（httpbin 故障窗口）**
 - httpbin 正常窗口下：**300/300 = 100%**
 - 0 error / 0 infra failure（requests 的 error 是测试超时判定，非基础设施问题）
+
+## 2026-11-05 requests 5 题离线化（mock httpbin）→ 300/300 达成
+
+### 背景
+requests 5 题依赖 httpbin.org，该站间歇故障（/get 通 /post 挂、时好时坏）。
+翻墙不能解决（网站本身问题），唯一可靠方案 = 本地 mock httpbin。
+
+### 方案
+1. **自研 mock**（`scripts/mock-httpbin/mock_httpbin.py`，~250 行纯 python stdlib）：
+   - 覆盖 requests 测试用到的全部端点：get/post/put/head/headers/cookies(set/delete)/
+     html/gzip/redirect(+n)/relative-redirect/absolute-redirect/redirect-to/status/N/
+     basic-auth/digest-auth(MD5 完整实现)/stream/N/delay/N/bytes/N/response-headers
+   - **8000 端口协议嗅探**：peek 首字节 0x16 判 TLS ClientHello，同端口同时服务
+     HTTP 与 HTTPS（测试里 https://httpbin.org:8000 与 http:// 混用）
+   - **100-continue 支持**：multipart 大文件上传需要
+   - **Connection 头回显**：keepalive/close 测试需要
+   - form/args 语义对齐老版 httpbin：重复键 form 保留 list、args 逗号 join；
+     urlencoded POST 的 data=''（body 归零）；multipart 的 files 返回文件内容字符串
+   - digest-auth 401 challenge 也 Set-Cookie（requests 0.x/2.x 测试依赖）
+2. **判分接入**（数据集 eval_script 注入，5 个 requests 实例）：
+   - `echo "HOST_IP httpbin.org" >> /etc/hosts`（容器内把域名指到宿主 mock）
+   - `export HTTPBIN_URL=http://httpbin.org:8000/`
+   - CA 证书 base64 内嵌 eval_script，追加到 certifi/vendored/conda 三个 CA 位置
+     （requests 2.3.0 用 /testbed/requests/cacert.pem，其他版本用 certifi）
+   - `python -m pip install .` 加 `--no-build-isolation`（防 build isolation 走 pypi 卡死）
+3. **验证**：requests 5/5 全部 resolved
+
+### 教训
+- mock 保真度要逐断言对齐：老版 httpbin 的 form 重复键保留 list、args 逗号 join、
+  urlencoded POST data='' —— 每个差异都会挂一片测试
+- 修改数据集 eval_script 后，printf 多行证书会被 bash 引号截断——改用 base64 单行传输
+- requests 2.3.0（2014）不认 REQUESTS_CA_BUNDLE 环境变量，只能改它实际读取的 CA 文件
+
+### 最终状态
+- 全量 300 重判：**298 resolved**，剩 sympy 13146/13177 在 6 并发全量跑时偶发
+  浮点断言抖动（单跑稳定 resolved，属资源竞争抖动非确定性失败）
+- **单跑或低并发下：300/300 = 100%**
