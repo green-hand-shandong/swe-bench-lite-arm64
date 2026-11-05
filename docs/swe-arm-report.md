@@ -119,6 +119,6 @@ python3 /tmp/run-golden-eval.py     # 单题冒烟
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
 python3 -m swebench.harness.run_evaluation \
-  --dataset_name /data2/gxw/agent-sandbox-platform/docs/swe-bench-lite-arm.parquet \
+  --dataset_name docs/swe-bench-lite-arm.parquet \
   --predictions_path gold --run_id gold-arm-full --max_workers 4
 ```
