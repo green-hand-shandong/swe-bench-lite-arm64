@@ -1,0 +1,55 @@
+{
+    "total_instances": 5,
+    "submitted_instances": 5,
+    "completed_instances": 0,
+    "resolved_instances": 0,
+    "unresolved_instances": 0,
+    "infra_failure_instances": 0,
+    "ambiguous_failure_instances": 5,
+    "empty_patch_instances": 0,
+    "error_instances": 5,
+    "completed_ids": [],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+        "psf__requests-1963",
+        "psf__requests-2148",
+        "psf__requests-2317",
+        "psf__requests-2674",
+        "psf__requests-863"
+    ],
+    "resolved_ids": [],
+    "unresolved_ids": [],
+    "infra_failure_ids": [],
+    "ambiguous_failure_ids": [
+        "psf__requests-1963",
+        "psf__requests-2148",
+        "psf__requests-2317",
+        "psf__requests-2674",
+        "psf__requests-863"
+    ],
+    "failure_reasons": {
+        "psf__requests-1963": "tests_timed_out",
+        "psf__requests-2148": "tests_timed_out",
+        "psf__requests-2317": "tests_timed_out",
+        "psf__requests-2674": "tests_timed_out",
+        "psf__requests-863": "tests_timed_out"
+    },
+    "error_ids": [
+        "psf__requests-1963",
+        "psf__requests-2148",
+        "psf__requests-2317",
+        "psf__requests-2674",
+        "psf__requests-863"
+    ],
+    "schema_version": 2,
+    "unstopped_instances": 0,
+    "unstopped_containers": [],
+    "unremoved_images": [
+        "swebench/sweb.eval.x86_64.psf_1776_requests-1963:latest",
+        "swebench/sweb.eval.x86_64.psf_1776_requests-2148:latest",
+        "swebench/sweb.eval.x86_64.psf_1776_requests-2317:latest",
+        "swebench/sweb.eval.x86_64.psf_1776_requests-2674:latest",
+        "swebench/sweb.eval.x86_64.psf_1776_requests-863:latest"
+    ]
+}

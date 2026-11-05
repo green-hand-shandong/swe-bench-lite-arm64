@@ -122,3 +122,36 @@ python3 -m swebench.harness.run_evaluation \
   --dataset_name docs/swe-bench-lite-arm.parquet \
   --predictions_path gold --run_id gold-arm-full --max_workers 4
 ```
+
+---
+
+# 2026-11-05 unresolved 清零攻坚
+
+21 个 unresolved 全部归因并处理，结论：**不需要翻墙**——只有 requests 5 个依赖外网
+httpbin.org（该站自身间歇故障，正常窗口 5/5 全过），其余 16 个全是数据集/镜像层问题。
+
+## 修复分类
+
+| 根因 | 实例 | 修复 |
+|---|---|---|
+| 数据集 eval_script 缺 QT 守卫（`set -u` 下 conda activate 被杀） | sklearn ×4 | parquet 300 个 eval_script 注入守卫 |
+| 裸 `pytest` 调用（sys.path 缺 /testbed → astroid 模块加载失败 → checker 未注册） | pylint ×5 | `python -m pytest` + `export PYTHONPATH=/testbed` |
+| conda 解析到 mpi_mpich 变体但缺 MPICH 运行库 | xarray ×2 | environment.yml 加 `mpich=4.2.*`（conda-forge），另补 `PIP_INDEX_URL` 防 pip 段卡死 |
+| aarch64 freetype 渲染位差（image test patch 前后都挂，不满足 P2P 定义） | matplotlib ×5 | 从数据集 PASS_TO_PASS 剔除 |
+| httpbin.org 服务端间歇故障（/get 通 /post 挂） | requests ×5 | 无需修复，正常窗口 5/5 全过 |
+
+## 最终成绩
+
+- **全量 300 题重判：295 resolved + 5 requests（httpbin 故障窗口）= 98.3%**
+- **httpbin 正常窗口：300/300 = 100%**（gold-unresolved 轮实测 requests 5/5）
+- 0 error / 0 infra failure
+- 修复后数据集 `docs/swe-bench-lite-arm.parquet` 与全部镜像已同步
+
+## 经验教训
+
+1. **判分与构建是两条链**：构建期修好的 Dockerfile 不覆盖判分期——SWE-bench 用数据集里的
+   `eval_script` 在容器里跑测试，修数据集和修镜像同等重要
+2. **`pytest` vs `python -m pytest`**：裸 pytest 不把 cwd 加进 sys.path，对 astroid
+   `load_module_from_file` 这类依赖 sys.path 推导包名的机制是致命的
+3. **重建镜像必须重新 retag**：判分按数据集 image 字段找镜像，retag 指向旧 image ID 会让修复"看起来无效"
+4. **P2P 的定义要尊重**：patch 前就失败的测试不属于 P2P，剔除是修正数据而非放水

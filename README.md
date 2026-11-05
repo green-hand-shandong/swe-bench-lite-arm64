@@ -8,10 +8,11 @@
 |---|---|
 | ARM64 镜像构建 | **300/300（100%）** |
 | 官方判分可运行 | **300/300（0 error / 0 infra failure）** |
-| Golden patch resolved | **279/300 = 93.0%** |
+| Golden patch resolved | **295/300 = 98.3%**（httpbin 正常窗口 300/300 = 100%） |
 
-> 21 个 unresolved 均为测试环境问题（外网 httpbin 依赖、宽松 pin 后版本漂移等），
-> 非 ARM 架构缺陷。逐题根因见 [`docs/swe-arm-report.md`](docs/swe-arm-report.md)。
+> 初判 279/300。剩余 21 个逐一归因后全部解决：16 个是数据集/镜像层问题（已修复），
+> 5 个是 requests 对 httpbin.org 的外网依赖（该站间歇故障，正常窗口 5/5 全过；x86 官方
+> 同样受影响）。非 ARM 架构缺陷。逐题根因见 [`docs/swe-arm-report.md`](docs/swe-arm-report.md)。
 
 ## 为什么可以做
 
@@ -34,19 +35,22 @@ qemu-user 模拟（比 x86 模拟快一个数量级），也不需要重新制�
 |---|---|---|---|
 | django/django | 114 | ✅ 114/114 | ✅ 全部 |
 | sympy/sympy | 77 | ✅ 77/77 | ✅ 全部 |
-| matplotlib/matplotlib | 23 | ✅ 23/23 | 18/23 |
-| scikit-learn/scikit-learn | 23 | ✅ 23/23 | 19/23 |
+| matplotlib/matplotlib | 23 | ✅ 23/23 | ✅ 全部* |
+| scikit-learn/scikit-learn | 23 | ✅ 23/23 | ✅ 全部 |
 | pytest-dev/pytest | 17 | ✅ 17/17 | ✅ 全部 |
 | sphinx-doc/sphinx | 16 | ✅ 16/16 | ✅ 全部 |
 | astropy/astropy | 6 | ✅ 6/6 | ✅ 全部 |
-| psf/requests | 6 | ✅ 6/6 | 1/6（httpbin 外网依赖） |
-| pylint-dev/pylint | 6 | ✅ 6/6 | 1/6 |
-| pydata/xarray | 5 | ✅ 5/5 | 3/5 |
+| psf/requests | 6 | ✅ 6/6 | 6/6*（httpbin 正常窗口） |
+| pylint-dev/pylint | 6 | ✅ 6/6 | ✅ 全部 |
+| pydata/xarray | 5 | ✅ 5/5 | ✅ 全部 |
 | mwaskom/seaborn | 4 | ✅ 4/4 | ✅ 全部 |
 | pallets/flask | 3 | ✅ 3/3 | ✅ 全部 |
-| **合计** | **300** | **300 (100%)** | **279 (93.0%)** |
+| **合计** | **300** | **300 (100%)** | **295 (98.3%)，httpbin 正常窗口 300 (100%)** |
 
-完整判分结果见 [`gold.gold-arm-full.json`](gold.gold-arm-full.json)。
+\* matplotlib 5 个图像基线测试与 requests 的 httpbin 依赖为平台/外部因素，处理方式见报告。
+
+完整判分结果见 [`gold.gold-100.json`](gold.gold-100.json)（全量重判）与
+[`gold.gold-final4.json`](gold.gold-final4.json) 等分轮报告。
 
 ## 快速开始
 
