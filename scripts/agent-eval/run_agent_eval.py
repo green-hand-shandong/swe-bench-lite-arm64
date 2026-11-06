@@ -34,8 +34,10 @@ def load_instances(limit):
 
 
 def run_single_turn(args, inst, out_dir):
-    """单轮模式：把题目描述直接给模型，要求输出完整 patch。"""
+    """单轮模式：把题目描述直接给模型，要求输出完整 patch。
+    带指数退避重试：vllm 长推理服务偶发连接重置/超时，重试后通常恢复。"""
     import requests as rq
+    import time as _time
     prompt = f"""You are a software engineer fixing a bug in a real repository.
 
 The repository is checked out at /testbed in a Docker container. Below is the bug
@@ -45,13 +47,27 @@ no explanations.
 <bug_report>
 {inst['problem_statement'][:12000]}
 </bug_report>"""
-    r = rq.post(f'{args.api_base}/chat/completions', json={
+    payload = {
         'model': args.model,
         'messages': [{'role': 'user', 'content': prompt}],
         'max_tokens': args.max_tokens,
         'temperature': args.temperature,
-    }, timeout=args.api_timeout)
-    r.raise_for_status()
+    }
+    last_err = None
+    for attempt in range(1, 6):  # 最多 5 次尝试
+        try:
+            r = rq.post(f'{args.api_base}/chat/completions', json=payload,
+                        timeout=args.api_timeout)
+            r.raise_for_status()
+            break
+        except (rq.exceptions.ConnectionError, rq.exceptions.ReadTimeout,
+                rq.exceptions.HTTPError) as e:
+            last_err = e
+            wait = min(30 * (2 ** (attempt - 1)), 300)  # 30/60/120/240/300s
+            print(f'  [retry {attempt}/5] {type(e).__name__}: {e} -> wait {wait}s')
+            _time.sleep(wait)
+    else:
+        raise RuntimeError(f'API failed after 5 retries: {last_err}')
     content = r.json()['choices'][0]['message']['content']
     # 剥离思考段（Qwen3/DeepSeek-R1 类思考模型）
     if '</think' in content:
