@@ -173,6 +173,7 @@ swe-bench-lite-arm64/
 - [`docs/swe-arm-adaptation-log.md`](docs/swe-arm-adaptation-log.md) — 逐题适配决策、踩坑与修复（最详细）
 - [`docs/model-eval-guide.md`](docs/model-eval-guide.md) — **如何用这套镜像测试你的模型/智能体**
 - [`docs/agent-eval-landscape.md`](docs/agent-eval-landscape.md) — 智能体评测生态调研（基准清单 + Harbor/EvalScope 等框架选型）
+- [`docs/reproduction-playbook.md`](docs/reproduction-playbook.md) — **论文/博客指标复现 playbook**（四条路线 + 资源预算）
 - [`docs/swe-arm-plan.md`](docs/swe-arm-plan.md) — 立项时的可行性分析与方案设计
 
 ## License
