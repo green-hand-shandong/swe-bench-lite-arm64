@@ -174,6 +174,7 @@ swe-bench-lite-arm64/
 - [`docs/model-eval-guide.md`](docs/model-eval-guide.md) — **如何用这套镜像测试你的模型/智能体**
 - [`docs/agent-eval-landscape.md`](docs/agent-eval-landscape.md) — 智能体评测生态调研（基准清单 + Harbor/EvalScope 等框架选型）
 - [`docs/reproduction-playbook.md`](docs/reproduction-playbook.md) — **论文/博客指标复现 playbook**（四条路线 + 资源预算）
+- [`docs/armtest-qwen3-30b.md`](docs/armtest-qwen3-30b.md) — 转换质量实测：Qwen3-30B-A3B 真实模型负载 × 33 题
 - [`docs/swe-arm-plan.md`](docs/swe-arm-plan.md) — 立项时的可行性分析与方案设计
 
 ## License

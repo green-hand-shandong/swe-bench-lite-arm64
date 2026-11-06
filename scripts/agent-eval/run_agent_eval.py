@@ -54,7 +54,7 @@ no explanations.
     r.raise_for_status()
     content = r.json()['choices'][0]['message']['content']
     # 剥离思考段（Qwen3/DeepSeek-R1 类思考模型）
-    if '</think">' in content or '</think' in content:
+    if '</think' in content:
         content = content.split('</think')[-1]
     # 提取 diff：优先找 diff --git 开头的代码块
     if '```' in content:
