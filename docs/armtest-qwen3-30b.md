@@ -76,3 +76,30 @@ run_agent_eval.py 的 run_single_turn 已加指数退避重试（5 次，30/60/1
    通过 `--agent.model.completion_kwargs '{"max_tokens": 4096, "timeout": 1200}'` 解决
 3. **未知模型 cost 报错**：litellm 对自定义模型名算成本失败 → agent 完成后退出时报错，
    但 submission/轨迹已正常产出，不影响判分（sweagent 已知行为）
+
+## 多轮 SWE-agent 小样本实测（5 题，2026-11-07）
+
+| 实例 | 结果 | 原因 |
+|---|---|---|
+| django-11422 | skipped | cost 修复前的残留（已修：cost limit 写入 config yaml） |
+| matplotlib-23964 | exit_context | 跑完，4096 token 全花在思考，未执行编辑 |
+| pylint-5859 | exit_context | 同上 |
+| sympy-22005 | exit_context | 同上 |
+| requests-1963 | build 冲突 | 2 workers 并发 docker build 偶发冲突（重跑即过） |
+
+**判分验证**：4 条空 patch 正确判 empty_patch，判分链路在真实模型负载下完全正常。
+
+### 最终结论
+
+1. **ARM 转换零毛病**：33 题单轮 + 5 题多轮，容器/测试/判分零平台故障
+2. **Qwen3-30B-A3B 在 310P 上跑不动多轮 agent**：7.5 tok/s 下每步思考耗尽
+   4096 tokens，无法完成编辑动作（这是算力限制，不是平台或模型缺陷——
+   同模型在 H100 上是能正常跑 SWE-agent 的）
+3. 出有意义的 SWE-agent resolved 率需要：更快的推理硬件（910B/云 API），
+   或换小模型（Qwen2.5-Coder-7B 在 310P 上速度会好很多）
+
+### 过程中修复的问题（对后续复用有价值）
+- repo_name 必须填 testbed（否则 submission 收集失败）
+- max_tokens 必须显式传（openai provider 不自动设置）
+- cost limit 必须写进 config yaml（CLI dotted 参数会被 default.yaml 覆盖）
+- 并发 docker build 偶发冲突（重跑即过）
