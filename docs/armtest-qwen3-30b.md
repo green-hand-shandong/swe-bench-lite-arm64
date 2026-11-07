@@ -67,3 +67,12 @@ uv pip install --python swe-agent-env/bin/python "sweagent @ git+https://github.
 ### vllm 稳定性改进（单轮管线）
 run_agent_eval.py 的 run_single_turn 已加指数退避重试（5 次，30/60/120/240/300s），
 覆盖 ConnectionReset/ReadTimeout/HTTPError。
+
+### 复现时发现并修复的 3 个问题（2026-11-07）
+1. **repo_name 必须填 testbed**：留空时 SWE-agent 在 / 执行 git → submission 收集失败
+   （实例 JSON 的 repo_name='testbed' → PreExistingRepoConfig → cd /testbed）
+2. **max_tokens 必须显式传**：sweagent 只对 anthropic provider 自动设置 max_tokens，
+   openai provider（vllm）不传 → Qwen3 思考模型无限生成（1 小时+不返回）。
+   通过 `--agent.model.completion_kwargs '{"max_tokens": 4096, "timeout": 1200}'` 解决
+3. **未知模型 cost 报错**：litellm 对自定义模型名算成本失败 → agent 完成后退出时报错，
+   但 submission/轨迹已正常产出，不影响判分（sweagent 已知行为）
