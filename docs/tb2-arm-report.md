@@ -4,8 +4,7 @@
 
 | 状态 | 数量 |
 |---|---|
-| ARM64 镜像构建成功 | **88 / 89（98.9%）** |
-| 外网不可达待重试 | 1（install-windows-3.11，win311.img） |
+| ARM64 镜像构建成功 | **89 / 89（100%）** |
 
 ## 转换方法（tb2-arm-convert.py，与 SWE-bench arm_convert 同思路）
 
@@ -31,7 +30,7 @@
 | financial-document-processor | uv 下载 python-build-standalone | UV_PYTHON_INSTALL_MIRROR=ghproxy | ✅ |
 | qemu-alpine-ssh / qemu-startup | bullseye-security 404（bullseye EOL） | archive.debian.org | ✅ |
 | mteb-retrieve | pytrec-eval-terrier sdist 联网构建 | 预构建 aarch64 wheel + COPY | ✅ |
-| install-windows-3.11 | archive.org win311.img 下载挂起 | Dockerfile 已改 COPY，待文件 | ⏳ |
+| install-windows-3.11 | archive.org win311.img 下载挂起 | 本地代理（7890）下载 + COPY | ✅ |
 | fix-git | 引用的 github repo 404 | setup.sh 改为直接构造 git 历史（判分只对比文件哈希，内容来源无关） | ✅ |
 
 ## 判分验证
@@ -52,3 +51,11 @@ tag 成 task.toml 里的原名即可无缝对接（retag 脚本同 SWE-bench）�
 | 外网下载需镜像/预置 | ✅ 13 任务 | ✅ 11 任务 |
 | 机械转换解决比例 | ~96% | ~88%（TB2 的 pip 包自身联网更多）|
 | 判分离线 | mock httpbin | TB2 无 httpbin 依赖，更简单 |
+
+
+## install-windows-3.11 适配记录
+
+- archive.org 在服务器网络下完全不可达（连接超时），但本地 clash 代理（7890）可达
+- `curl -x http://127.0.0.1:7890` 下载 win311.img（268MB）
+- Dockerfile 已预改 COPY（之前完成），拷入文件后构建成功
+- **全部 89/89 = 100%**
