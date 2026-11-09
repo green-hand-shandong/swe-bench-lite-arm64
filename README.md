@@ -6,9 +6,9 @@
 
 | 指标 | 数值 |
 |---|---|
-| ARM64 镜像构建 | **300/300（100%）** |
-| 官方判分可运行 | **300/300（0 error / 0 infra failure）** |
-| Golden patch resolved | **300/300 = 100%**（离线 mock httpbin，无需外网/翻墙） |
+| SWE-bench Lite ARM64 镜像 | **300/300（100%）** |
+| SWE-bench Lite Golden 判分 | **300/300 = 100%**（离线 mock httpbin） |
+| Terminal-Bench 2.0 ARM64 镜像 | **88/89（98.9%）** |
 
 > 初判 279/300。剩余 21 个逐一归因后全部解决：16 个是数据集/镜像层问题（已修复），
 > 5 个是 requests 对 httpbin.org 的外网依赖 —— 用自研 mock httpbin 离线化后 5/5 全过。
