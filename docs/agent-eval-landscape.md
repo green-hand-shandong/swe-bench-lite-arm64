@@ -4,42 +4,62 @@
 指标**；以及主流评测编排框架的选型对比。所有项目均可与我们已有的 **300 个 ARM64
 镜像**配合。
 
-## 一、常见智能体测试基准（按类型）
+## 一、打分基准全景（与 SWE-bench / Terminal-Bench 同级）
 
-### 代码修复类（与 SWE-bench Lite 同类）
-| 基准 | 规模/特点 | 说明 |
-|---|---|---|
-| **SWE-bench Lite** | 300 题 | 我们已 ARM 化 ✅ |
-| **SWE-bench Verified** | 500 题，人工校验 | 官方精选子集，行业标配 |
-| **SWE-bench Multilingual** | 多语言仓库 | 不止 Python，Java/Go/JS 等 |
-| **SWE-bench Pro** | Scale AI 出品 | 更难、更长 horizon、低污染 |
-| **SWE-bench Multimodal** | 含截图/UI | 前端类任务 |
-| **Aider Polyglot** | 多语言 | Exercism 题目，测编辑能力 |
-| **SWE-Gym / R2E-Gym** | 可训练环境 | 偏 RL 训练场景 |
+> 依据一手论文：SWE-agent（2405.15793）、GAIA（2311.12983）、τ-bench（2406.12045）、
+> BALROG（2411.13543）、TheAgentCompany（2412.14161）、BrowseComp（2504.12516）、
+> Vending-Bench（2502.15840）、SWE-bench-Live（2505.23419）、MCP-Bench（2508.20453）、
+> Agent 综述（2503.16416）。均为开源可复现的打分基准。
 
-### 终端操作类（近两年最热）
-| 基准 | 说明 |
-|---|---|
-| **Terminal-Bench 2.0** | 真实终端任务（laude-institute 出品，Harbor 官方基准），考 shell/编译/调试 |
-| **InterCode** | Bash/SQL 交互式执行 |
-| **OSWorld** | 完整桌面 OS GUI 操作 |
-| **WebArena / VisualWebArena** | 网页浏览器操作 |
+### 代码修复类（与 SWE-bench Lite 同级）
+| 基准 | 规模 | 主指标 | 维护方 | 说明 |
+|---|---|---|---|---|
+| **SWE-bench Lite** | 300 题 | % Resolved | Princeton | 我们已 ARM 化 ✅（298/300 与 x86 一致） |
+| **SWE-bench Verified** | 500 题 | % Resolved | OpenAI 精选 | 人工校验子集，行业标配 |
+| **SWE-bench full** | 2,294 题 | % Resolved | Princeton | 12 个 Python 仓库 |
+| **SWE-bench Multilingual** | 多语言 | % Resolved | 社区 | Java/Go/JS/C 等 |
+| **SWE-bench Pro** | 1,800+ 题 | % Resolved | Scale AI | 更长 horizon、商业低污染 |
+| **SWE-bench-Live** | 1,319 题 | % Resolved | **Microsoft** | 2024+ 新 issue，抗污染可滚动更新 |
+| **Multi-SWE-bench** | 多语言 | % Resolved | ByteDance | 多语言 issue 修复 |
+| **SWE-Perf** | 性能优化 | speedup | 社区 | 不止修对，还要**改得快** |
+| **Aider Polyglot** | 225 题 | % Correct | Aider | Exercism 题，测编辑能力 |
+| **SWE-Gym / R2E-Gym** | 可训练环境 | % Resolved | 社区 | 偏 RL 训练场景 |
 
-### 工具调用/多轮类
-| 基准 | 说明 |
-|---|---|
-| **τ-bench / τ²-bench / τ³-bench** | 客服对话 + 工具调用 + 规则校验（航空/零售/电信/银行域） |
-| **GAIA** | 通用助理多跳任务（网页/文件/推理） |
-| **MCP-Atlas / Toolathlon** | MCP 工具调用能力 |
-| **BrowseComp / WideSearch** | 深度搜索 |
-| **AutomationBench / JobBench** | 自动化办公任务 |
+### 终端/计算机操作类（与 Terminal-Bench 同级）
+| 基准 | 规模 | 主指标 | 维护方 | 说明 |
+|---|---|---|---|---|
+| **Terminal-Bench 2.0** | 89 题 | % Resolved | laude-institute | 我们已 ARM 化 ✅（89/89=100%） |
+| **OSWorld** | 369 任务 | 成功率 | 香港大学 | 完整桌面 OS GUI（Ubuntu/Windows/macOS） |
+| **WebArena / VisualWebArena** | 812 任务 | 成功率 | CMU | 自托管网站真实操作 |
+| **InterCode** | Bash/SQL | 成功率 | Princeton | 交互式执行 |
+| **AgentBench** | 8 环境 | 成功率 | 清华 | 多环境综合（DB/网页/游戏等） |
 
-### 综合长程类
-| 基准 | 说明 |
-|---|---|
-| **SWE-Lancer** | 真实 Freelancer 付费任务，按美元计价 |
-| **GDPval** | 真实职业任务 |
-| **ResearchRubrics** | 研究类长任务评分 |
+### 工具调用/对话类（与 τ-bench 同级）
+| 基准 | 规模 | 主指标 | 维护方 | 说明 |
+|---|---|---|---|---|
+| **τ-bench / τ² / τ³** | 165+ 任务 | pass¹、pass^k | Sierra | 客服对话+工具+规则校验（航空/零售/电信） |
+| **BFCL (Berkeley)** | 4,000+ | AST/准确率 | UC Berkeley | 函数调用评测标杆 |
+| **GAIA** | 466 题 | 准确率（L1/2/3 分层） | Meta+HuggingFace | 通用助理多跳，人类 92% vs GPT-4+插件 30% |
+| **MCP-Bench** | 28 服务器/250 工具 | 二级评分（规则+LLM judge） | Accenture | 2025 新出，MCP 工具调用+跨服务器编排 |
+| **BrowseComp** | 1,266 题 | 准确率（AI judge） | OpenAI | 深度浏览检索，Deep Research 解约一半 |
+| **ToolBench / API-Bank** | 1.6万+ API | 成功率 | 社区 | API 调用链 |
+
+### 综合工作/长程类（2025 最热方向）
+| 基准 | 规模 | 主指标 | 维护方 | 说明 |
+|---|---|---|---|---|
+| **TheAgentCompany** | 175 任务 | 完成率+部分完成分 | **CMU** | 模拟软件公司（GitLab/OwnCloud/RocketChat），最佳模型 Gemini 2.5 Pro 仅 30.3% |
+| **SWE-Lancer** | 付费任务 | 美元计价 | OpenAI | 真实 Freelancer 任务 |
+| **Vending-Bench** | 模拟经营 | 净资产 | Andon Labs | 长程一致性（2000+消息），Claude 3.5 Sonnet $2,218 胜人类 $844 |
+| **GDPval** | 真实职业任务 | 胜率 | OpenAI | 经济价值视角 |
+| **CORE-bench** | 计算复现 | 准确率 | Princeton | 复现论文计算结果 |
+| **ScienceAgentBench** | 102 任务 | 成功率 | 社区 | 数据驱动科研 |
+
+### 2025-2026 新趋势（综述指出的空白）
+- **成本与效率并列**：新论文把 token 用量、API 开销与 resolve rate 并列报告
+  （HAL Holistic Agent Leaderboard 方向：accuracy + cost + compute + trajectory 四维）
+- **抗污染**：SWE-bench-Live、SWE-rebench（持续更新的新 issue 源）
+- **长程一致性**：Vending-Bench 证明模型在 2000+ 步后系统性"崩坏"（与上下文填充无关）
+- **现实工作域**：TheAgentCompany 最佳模型仅 30%——真实工作流仍是巨大短板
 
 ## 二、常见指标（论文里报什么数）
 
