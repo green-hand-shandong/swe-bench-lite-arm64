@@ -4,9 +4,8 @@
 
 | 状态 | 数量 |
 |---|---|
-| ARM64 镜像构建成功 | **87 / 89（97.8%）** |
+| ARM64 镜像构建成功 | **88 / 89（98.9%）** |
 | 外网不可达待重试 | 1（install-windows-3.11，win311.img） |
-| 上游失效 | 1（fix-git，引用的 github repo 404） |
 
 ## 转换方法（tb2-arm-convert.py，与 SWE-bench arm_convert 同思路）
 
@@ -33,7 +32,7 @@
 | qemu-alpine-ssh / qemu-startup | bullseye-security 404（bullseye EOL） | archive.debian.org | ✅ |
 | mteb-retrieve | pytrec-eval-terrier sdist 联网构建 | 预构建 aarch64 wheel + COPY | ✅ |
 | install-windows-3.11 | archive.org win311.img 下载挂起 | Dockerfile 已改 COPY，待文件 | ⏳ |
-| fix-git | 引用的 github repo 404 | 上游失效 | ❌ |
+| fix-git | 引用的 github repo 404 | setup.sh 改为直接构造 git 历史（判分只对比文件哈希，内容来源无关） | ✅ |
 
 ## 判分验证
 
