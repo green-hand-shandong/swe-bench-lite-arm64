@@ -4,9 +4,9 @@
 
 | 状态 | 数量 |
 |---|---|
-| ARM64 镜像构建成功 | **78 / 89（87.6%）** |
-| 需逐题适配（外网下载依赖） | 11 |
-| 不可修复（上游失效） | 0 |
+| ARM64 镜像构建成功 | **87 / 89（97.8%）** |
+| 外网不可达待重试 | 1（install-windows-3.11，win311.img） |
+| 上游失效 | 1（fix-git，引用的 github repo 404） |
 
 ## 转换方法（tb2-arm-convert.py，与 SWE-bench arm_convert 同思路）
 
@@ -20,16 +20,20 @@
 覆盖：python 工具链、编译类（cython/pov-ray/compcert）、系统管理
 （git-webserver/nginx/openssl）、数据处理、密码学、LaTeX、视频处理等。
 
-## 未完成 11 个任务分类
+## 逐题适配记录（原 11 个未完成任务 → 9 个已解决）
 
-| 类型 | 任务 | 适配方案 |
-|---|---|---|
-| HF 数据集下载 | query-optimize, train-fasttext | HF_ENDPOINT=hf-mirror.com 重试 |
-| setup.py 联网 | bn-fit-modify, mteb-retrieve, reshard-c4-data | 预下载数据 + COPY |
-| archive.org 大文件 | install-windows-3.11 (win311.img) | 预下载 + COPY |
-| github 已失效 | fix-git (personal-site 404) | 上游失效，无法修复 |
-| github 慢速 clone | crack-7z-hash (john.git) | 本地 mirror |
-| 基础镜像已解决 | build-pmars, qemu×2, sam-cell-seg, winning-avg | 已在重试中完成（debian 拉取成功）|
+| 任务 | 问题 | 适配方案 | 结果 |
+|---|---|---|---|
+| train-fasttext | HF yelp 数据集下载 | hf-mirror 预下载 + COPY | ✅ |
+| query-optimize | HF oewn.sqlite | 同上 | ✅ |
+| bn-fit-modify | github raw csv | hf-mirror 预下载 + COPY | ✅ |
+| crack-7z-hash | github john.git clone | 本地 mirror clone | ✅ |
+| reshard-c4-data | HF c4 数据集 | Dockerfile 注入 HF_ENDPOINT=hf-mirror | ✅ |
+| financial-document-processor | uv 下载 python-build-standalone | UV_PYTHON_INSTALL_MIRROR=ghproxy | ✅ |
+| qemu-alpine-ssh / qemu-startup | bullseye-security 404（bullseye EOL） | archive.debian.org | ✅ |
+| mteb-retrieve | pytrec-eval-terrier sdist 联网构建 | 预构建 aarch64 wheel + COPY | ✅ |
+| install-windows-3.11 | archive.org win311.img 下载挂起 | Dockerfile 已改 COPY，待文件 | ⏳ |
+| fix-git | 引用的 github repo 404 | 上游失效 | ❌ |
 
 ## 判分验证
 
