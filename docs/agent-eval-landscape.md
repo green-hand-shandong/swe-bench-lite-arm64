@@ -1,7 +1,8 @@
 # 智能体评测生态调研（2026-11）
 
-本文回答两个问题：除了 SWE-bench Lite，还有哪些常见的智能体测试；以及主流
-评测编排框架的选型对比。所有项目均可与我们已有的 **300 个 ARM64 镜像**配合。
+本文回答三个问题：除了 SWE-bench Lite，还有哪些常见的智能体测试；**论文里报什么
+指标**；以及主流评测编排框架的选型对比。所有项目均可与我们已有的 **300 个 ARM64
+镜像**配合。
 
 ## 一、常见智能体测试基准（按类型）
 
@@ -40,7 +41,48 @@
 | **GDPval** | 真实职业任务 |
 | **ResearchRubrics** | 研究类长任务评分 |
 
-## 二、评测编排框架选型
+## 二、常见指标（论文里报什么数）
+
+> 依据：SWE-agent 论文（arXiv 2405.15793）、GAIA（2311.12983）、
+> τ-bench（2406.12045）、BALROG（2411.13543）、Agent 综述（2503.16416）。
+
+### 核心三件套（几乎所有论文都报）
+
+| 指标 | 定义 | 用在哪 |
+|---|---|---|
+| **Resolve Rate / Success Rate** | 全部测试通过的比例（SWE-bench 口径） | SWE-bench 系、代码修复类的**主指标** |
+| **Accuracy** | 答案正确的比例（准精确匹配） | GAIA、问答/工具调用类的主指标 |
+| **Cost** | 平均推理成本（$/实例 或 token 数） | SWE-agent 起成为标配（论文设 $4/实例 预算上限） |
+
+### 扩展指标（不同基准的特色口径）
+
+| 指标 | 定义 | 出处 |
+|---|---|---|
+| **pass@1 / pass@k** | k 次尝试至少一次成功（代码生成口径） | SWE-agent Fig.4（6 次跑 Lite 测方差） |
+| **pass^k（pass hat k）** | k 次独立尝试**全部**成功的概率，测**一致性** | τ-bench 提出：gpt-4o pass¹ 61% 但 pass⁸ <25% |
+| **% Resolved（pass@1 口径）** | SWE-bench 主指标的标准叫法 | SWE-agent 论文主指标 |
+| **Average Progress / Achievement %** | 0~100 归一化进度分（按成就比例） | BALROG（游戏环境统一分） |
+| **Efficiency / Time to Answer** | 平均耗时（分钟/题） | GAIA Table 4（人类 L1 6.8min vs L3 17.7min） |
+| **Tool call correctness** | 工具选择 + 参数 + 执行输出的逐步正确性 | τ-bench 规则奖励（r_action × r_output） |
+| **Step-level progress** | 每步是否推进用户目标 | Galileo action advancement |
+| **Milestone completion** | 关键导航节点完成率 | WebCanvas |
+| **Trajectory 统计** | 无效/幻觉动作的记录统计 | BALROG |
+| **Difficulty 分层** | 按 Level 1/2/3 分层报告 | GAIA（L1 无工具 ≤5 步 / L2 5~10 步 / L3 任意） |
+
+### 论文报告惯例（复现时对齐口径用）
+
+- **SWE-bench 系**：主指标 `% Resolved`，配 `Avg Cost`；常规补充分析是按
+  repo / issue 年份分层（SWE-agent Table 6-7）；对比基线是 BM25 检索 + 直接生成补丁
+- **τ-bench**：主指标 `pass¹`，配 `pass^k`（一致性）；规则奖励 = 终态数据库
+  精确匹配 × 回复包含必要信息（如 "54.04"）
+- **GAIA**：主指标 `accuracy`，配分层（L1/L2/L3）+ 时间；300/466 题答案
+  不公开供榜单用，固定答案格式 `FINAL ANSWER: ...`
+- **成本口径**：SWE-agent 用"已解决实例的平均成本"且设 $4/实例预算上限——
+  复现时注意论文报的是"全实例平均"还是"已解决实例平均"
+- **2025 综述指出的缺口**：成本/效率（token 用量、API 开销、推理时长）跟踪不足，
+  新论文越来越多把成本与 resolve rate 并列报告
+
+## 三、评测编排框架选型
 
 ### Harbor（harbor-framework/harbor，⭐6.8k）— **推荐重点看**
 Terminal-Bench 官方 harness，**定位与我们的用法最接近**：
@@ -76,7 +118,7 @@ Terminal-Bench 官方 harness，**定位与我们的用法最接近**：
 - **Repo2RLEnv**（HuggingFace）：把任意 repo 转成可验证 RL 环境
 - **SWE-Lancer**（OpenAI）：真实付费任务，美元计价
 
-## 三、与 SWE-Lite-ARM 的组合建议
+## 四、与 SWE-Lite-ARM 的组合建议
 
 ```
 当前资产：300 个 ARM64 镜像 + 修复后数据集 + mock httpbin + 判分管线
