@@ -9,6 +9,7 @@
 | SWE-bench Lite ARM64 镜像 | **300/300（100%）** |
 | SWE-bench Lite Golden 判分 | **300/300 = 100%**（离线 mock httpbin） |
 | Terminal-Bench 2.0 ARM64 镜像 | **89/89（100%）** |
+| OSWorld ARM64（桌面 GUI 基准） | **VM/主控/判分全链路打通**，os 域 24 题接模型跑基线，chrome 域验证通过 |
 
 > 初判 279/300。剩余 21 个逐一归因后全部解决：16 个是数据集/镜像层问题（已修复），
 > 5 个是 requests 对 httpbin.org 的外网依赖 —— 用自研 mock httpbin 离线化后 5/5 全过。
@@ -176,6 +177,7 @@ swe-bench-lite-arm64/
 - [`docs/reproduction-playbook.md`](docs/reproduction-playbook.md) — **论文/博客指标复现 playbook**（四条路线 + 资源预算）
 - [`docs/armtest-qwen3-30b.md`](docs/armtest-qwen3-30b.md) — 转换质量实测：Qwen3-30B-A3B 真实模型负载 × 33 题
 - [`docs/swe-arm-plan.md`](docs/swe-arm-plan.md) — 立项时的可行性分析与方案设计
+- [`docs/osworld-arm-report.md`](docs/osworld-arm-report.md) — **OSWorld ARM64 适配报告**（QEMU/KVM aarch64 路线、13+ 条踩坑清单、chrome 域要点）
 
 ## License
 
