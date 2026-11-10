@@ -144,7 +144,16 @@ curl http://127.0.0.1:15000/platform   # → Linux
    流程：起 overlay → 装应用 → 关机 → `qemu-img commit overlay.qcow2` →
    base 更新（chromium+VSCode+socat+xauth 脚本已烘焙）。
 
-## 八、ARM 智能体基线（qwen3-8b 纯文本）
+## 八、ARM 智能体基线
+
+### 8.1 网关与视觉模型（2026-11-10）
+
+- 网关：`http://10.40.93.109:8788/v1`（key 见 `llm_runtime` 配置），36 个模型
+- **qwen3.6-35b-a3b 支持视觉**（vllm 0.24.0-tp2 后端），已验证图像问答
+- 接入要点：reasoning 模型需 `chat_template_kwargs: {"enable_thinking": false}`
+  否则 `content=None`；内网网关必须 `trust_env=False` 绕过系统代理
+
+### 8.2 qwen3-8b 纯文本基线（已完成）
 
 - 模型：vllm-ascend 上的 qwen3-8b（text-only，无视觉），单轮 prompt 驱动
   pyautogui/bash 动作，max 6 步/题
