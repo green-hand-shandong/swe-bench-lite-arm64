@@ -1,0 +1,41 @@
+#cloud-config
+hostname: osworld-arm
+users:
+  - name: user
+    plain_text_passwd: password
+    lock_passwd: false
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [adm, cdrom, dip, plugdev, lpadmin, lxd, sambashare]
+    shell: /bin/bash
+ssh_pwauth: true
+chpasswd:
+  expire: false
+packages:
+  - xfce4
+  - xfce4-terminal
+  - x11vnc
+  - xdotool
+  - wmctrl
+  - scrot
+  - gnome-terminal
+  - nautilus
+  - firefox
+  - python3-pip
+  - python3-xlib
+  - python3-dev
+  - build-essential
+  - libjpeg-dev
+  - zlib1g-dev
+  - imagemagick
+  - libopencv-dev
+  - python3-tk
+  - tesseract-ocr
+  - flameshot
+  - libreoffice
+  - gimp
+  - vlc
+  - thunderbird
+runcmd:
+  - systemctl enable --now ssh
+  - sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+  - systemctl restart ssh
