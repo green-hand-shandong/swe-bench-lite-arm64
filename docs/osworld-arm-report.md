@@ -12,11 +12,11 @@
 | OSWorld guest server | ✅ 原版 main.py，systemd 常驻 |
 | 主控接入 | ✅ 自写 QEMU provider，DesktopEnv 全链路可用 |
 | 判分 | ✅ 第一个任务 score = 1.0（os 域文件压缩题） |
-| **os 域（24 题）** | ✅ **可直接跑** |
+| **os 域（24 题）** | ✅ **已接模型跑基线**（qwen3-8b 纯文本模式，管线逐题出分） |
 | libreoffice 三件套（117 题） | ✅ 应用已装，判分靠 vm_file/cloud_file，预计可用 |
 | gimp（26）/ vlc（17）/ thunderbird（15） | ✅ 应用已装，待抽样验证 |
-| chrome 域（45）+ multi_apps 中 chrome 相关 | ⚠️ 需装 chromium（server 端已有 arm→chromium 替换分支），UI 差异可能影响 pyautogui 坐标 |
-| vs_code（23） | ⚠️ 官方有 arm64 deb，待装 |
+| chrome 域（45）+ multi_apps 中 chrome 相关 | ✅ chromium(snap) 已装并验证（bookmarks 题 score=1.0）；snap 路径/CDP 端口要点见下 |
+| vs_code（23） | ✅ 官方 arm64 deb（1.145.2）已装 |
 
 ## 二、为什么不能直接用官方镜像
 
@@ -125,10 +125,38 @@ curl http://127.0.0.1:15000/platform   # → Linux
 > 完整脚本（user-data、boot-vm.sh、provider、示例任务）整理在
 > `scripts/osworld-arm/`。
 
-## 七、下一步
+## 七、chrome 域适配要点（2026-11-10 验证）
 
-1. 装 chromium + VSCode arm64 deb，抽样验证 chrome/vs_code 域
-2. 接 vllm-ascend（Qwen3-30B）跑 os 域 24 题，产出首个 ARM 智能体基线
-3. multi_apps 快照基线重建
+1. **snap chromium**：Ubuntu 22.04 的 chromium 只有 snap 版。装完后二进制在
+   `/snap/bin/chromium`，**systemd service 的 PATH 必须显式加入 /snap/bin**，
+   否则 server 的 `subprocess.Popen('chromium')` 报 `No such file or directory`。
+2. **profile 路径**：snap chromium 的用户数据在
+   `~/snap/chromium/common/chromium/Default/`（不是 `~/.config/chromium`）。
+   OSWorld 官方 evaluator 的 `_is_arm_architecture` 分支已经用 snap 路径，
+   说明上游已考虑 ARM。
+3. **Xlib xauth 告警污染输出**：`.Xauthority` 为空时，python-Xlib 每次建连
+   都向 stdout 打 `Xlib.xauth: warning...`，污染 `execute_python_command` 的
+   输出 → `vm_platform` 变成 `"Xlib...\nLinux"`，所有按 platform 分支的
+   evaluator（如 get_bookmarks）走错分支报 `Unsupported operating system`。
+   解法：guest 里 `xauth add ':0' . $COOKIE`（会归一化为 `host/unix:0` 条目），
+   并写进 systemd ExecStartPre 固化。
+4. **应用必须烘焙进 base image**：overlay 冷重置会抹掉运行期安装的所有东西。
+   流程：起 overlay → 装应用 → 关机 → `qemu-img commit overlay.qcow2` →
+   base 更新（chromium+VSCode+socat+xauth 脚本已烘焙）。
+
+## 八、ARM 智能体基线（qwen3-8b 纯文本）
+
+- 模型：vllm-ascend 上的 qwen3-8b（text-only，无视觉），单轮 prompt 驱动
+  pyautogui/bash 动作，max 6 步/题
+- 驱动：`scripts/osworld-arm/run_os_baseline.py`（截图可选，文本模式默认）
+- 已知限制：无视觉的 8B 模型做 GUI 任务分数预期很低，本次目的主要是
+  **验证判分管线在 ARM 上逐题可出分**，不是刷分
+- 结果：`results-os.jsonl`（逐题 score + 动作轨迹 + 耗时）
+
+## 九、下一步
+
+1. os 域 24 题基线跑完后，接带视觉的模型（Qwen3-VL / Qwen2.5-VL）重跑对比
+2. multi_apps 快照基线重建（组合应用预装）
+3. chrome 域再抽样 3-5 题（验证 pyautogui 坐标在 chromium 下的漂移程度）
 4. 把 QEMU provider 与 boot-vm.sh 上游化（OSWorld 官方 provider 工厂是
    开放结构，`create_vm_manager_and_provider` 加分支即可）
