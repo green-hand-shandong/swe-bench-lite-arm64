@@ -151,7 +151,14 @@ curl http://127.0.0.1:15000/platform   # → Linux
 - 驱动：`scripts/osworld-arm/run_os_baseline.py`（截图可选，文本模式默认）
 - 已知限制：无视觉的 8B 模型做 GUI 任务分数预期很低，本次目的主要是
   **验证判分管线在 ARM 上逐题可出分**，不是刷分
-- 结果：`results-os.jsonl`（逐题 score + 动作轨迹 + 耗时）
+- **结果（os 域 19/24 题，5 题 infeasible 不计）**：
+  - resolved **2/19**（文件压缩题、时区设置题），平均 221s/题
+  - 12 题 score=0（模型纯文本盲操作 GUI，属预期）；4 题首轮因 HF 资源
+    下载失败（代理波动），用 `prefetch_cache.py` 预热本地缓存后重跑
+- **缓存要点**：OSWorld 的 SetupController 缓存路径是
+  `cache/<task_id>/<uuid5(url)>_<basename>`（`desktop_env.py:437`），
+  预取脚本必须按 task_id 子目录写入，否则缓存永不命中
+- 逐题轨迹：`results-os.jsonl`（score + 动作历史 + 耗时）
 
 ## 九、下一步
 

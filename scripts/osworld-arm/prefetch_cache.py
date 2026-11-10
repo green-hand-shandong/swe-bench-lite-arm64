@@ -10,26 +10,30 @@ os.makedirs(cache_dir, exist_ok=True)
 urls = []
 for f in glob.glob(f"evaluation_examples/examples/{domain}/*.json"):
     d = json.load(open(f))
+    task_id = d["id"]
     for c in d.get("config", []):
         if c.get("type") == "download":
             for item in c["parameters"]["files"]:
-                urls.append((item["url"], item["path"]))
+                urls.append((task_id, item["url"], item["path"]))
     ev = d.get("evaluator", {})
-    def walk(o):
+    def walk(o, tid):
         if isinstance(o, dict):
             if o.get("type") == "download":
                 for item in o["parameters"]["files"]:
-                    urls.append((item["url"], item["path"]))
-            for v in o.values(): walk(v)
+                    urls.append((tid, item["url"], item["path"]))
+            for v in o.values(): walk(v, tid)
         elif isinstance(o, list):
-            for v in o: walk(v)
-    walk(ev)
+            for v in o: walk(v, tid)
+    walk(ev, task_id)
 
 urls = sorted(set(urls))
 print(f"{len(urls)} files to cache")
 ok = fail = 0
-for url, path in urls:
-    cache_path = os.path.join(cache_dir, "{:}_{:}".format(
+for task_id, url, path in urls:
+    # DesktopEnv uses cache/<task_id>/ as SetupController's cache_dir (line 437)
+    task_cache = os.path.join(cache_dir, task_id)
+    os.makedirs(task_cache, exist_ok=True)
+    cache_path = os.path.join(task_cache, "{:}_{:}".format(
         uuid.uuid5(uuid.NAMESPACE_URL, url), os.path.basename(path)))
     if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
         ok += 1
