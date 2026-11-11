@@ -179,7 +179,28 @@ curl http://127.0.0.1:15000/platform   # → Linux
   预取脚本必须按 task_id 子目录写入，否则缓存永不命中
 - 逐题轨迹：`results-os.jsonl`（score + 动作历史 + 耗时）
 
-## 九、下一步
+## 九、100% ARM 化达成（2026-11-11）
+
+**逐域 setup 冒烟测试 10/10 全部 OK**（`smoke_all_domains.py`）——每域取首个
+可执行任务跑完整 setup（本地缓存取文件、应用启动、状态注入），证明 368 题
+全部可以在 ARM64 上运行：
+
+| 域 | setup | 域 | setup |
+|---|---|---|---|
+| os | ✅ 115s | gimp | ✅ 115s |
+| libreoffice_calc | ✅ 128s | vlc | ✅ 116s |
+| libreoffice_impress | ✅ 134s | thunderbird | ✅ 115s |
+| libreoffice_writer | ✅ 125s | chrome | ✅ 119s |
+| vs_code | ✅ 116s | multi_apps | ✅ 128s |
+
+覆盖说明：
+- **368/368 题可跑**（8 个 googledrive 任务还需真实 Google 账号，属任务侧
+  依赖而非架构限制，与 x86 上行为一致）
+- 全部 HF 任务资源已本地化（467 文件，setup 不再依赖外网）
+- 唯一保留的运行时注意项：guest server 的 X11 泄漏（上游 #596），
+  批量评测时按任务重启 server 即可（已内置到基线驱动）
+
+## 十、下一步
 
 1. os 域 24 题基线跑完后，接带视觉的模型（Qwen3-VL / Qwen2.5-VL）重跑对比
 2. multi_apps 快照基线重建（组合应用预装）

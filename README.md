@@ -9,7 +9,7 @@
 | SWE-bench Lite ARM64 镜像 | **300/300（100%）** |
 | SWE-bench Lite Golden 判分 | **300/300 = 100%**（离线 mock httpbin） |
 | Terminal-Bench 2.0 ARM64 镜像 | **89/89（100%）** |
-| OSWorld ARM64（桌面 GUI 基准） | **VM/主控/判分全链路打通**，os 域 24 题接模型跑基线，chrome 域验证通过 |
+| OSWorld ARM64（桌面 GUI 基准） | **100% ARM 化：368 题全部可跑**（10/10 域 setup 冒烟通过），基线 qwen3.6-35b-a3b 视觉 4/19 |
 
 > 初判 279/300。剩余 21 个逐一归因后全部解决：16 个是数据集/镜像层问题（已修复），
 > 5 个是 requests 对 httpbin.org 的外网依赖 —— 用自研 mock httpbin 离线化后 5/5 全过。
