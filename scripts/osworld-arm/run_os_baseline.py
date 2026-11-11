@@ -26,14 +26,25 @@ BASH: <one shell command to run in a terminal>
 
 /no_think — reply with ONLY the action line, no explanation. Rules: one action per turn; prefer terminal (ctrl+alt+t) for file tasks; use absolute paths; when the goal is achieved or impossible, reply exactly DONE."""
 
+API_KEY = os.environ.get("OSWORLD_API_KEY", "")
+
 def chat(messages, max_tokens=512):
-    r = requests.post(f"{API_BASE}/chat/completions", json={
-        "model": MODEL, "messages": messages, "max_tokens": max_tokens,
-        "temperature": 0.0}, timeout=600)
+    headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
+    with requests.Session() as s:
+        s.trust_env = False  # gateway is intranet-direct; never use system proxy
+        payload = {
+            "model": MODEL, "messages": messages, "max_tokens": max_tokens,
+            "temperature": 0.0,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+        r = s.post(f"{API_BASE}/chat/completions", json=payload,
+                   timeout=600, headers=headers)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
 def parse_action(text):
+    if not text:
+        return ("unknown", "empty-reply")
     m = re.search(r"PYAUTOGUI\s*:\s*(.+)", text, re.I)
     if m: return ("pyautogui", m.group(1).strip())
     m = re.search(r"BASH\s*:\s*(.+)", text, re.I)
@@ -41,7 +52,23 @@ def parse_action(text):
     if re.search(r"\bDONE\b", text, re.I): return ("done", "")
     return ("unknown", text[:200])
 
+def _restart_guest_server(env):
+    """Restart the guest OSWorld server before each task: the upstream X11
+    connection leak (#596) wedges /screenshot after ~220 calls, and a wedged
+    screenshot means the model plans on a stale frame."""
+    try:
+        import subprocess
+        subprocess.run(
+            ["sshpass", "-p", "password", "ssh", "-o", "StrictHostKeyChecking=no",
+             "-o", "UserKnownHostsFile=/dev/null", "-p", "12222", "user@localhost",
+             "sudo systemctl restart osworld-server"],
+            capture_output=True, timeout=60)
+        time.sleep(6)
+    except Exception:
+        pass
+
 def run_task(env, cfg):
+    _restart_guest_server(env)
     obs = env.reset(task_config=cfg, seed=42)
     instruction = cfg["instruction"]
     history = []
@@ -57,11 +84,21 @@ def run_task(env, cfg):
             msgs.append({"role": "user", "content": content})
         else:
             msgs.append({"role": "user", "content": f"Goal: {instruction}\nHistory: {history[-4:]}\nNext single action?"})
-        try:
-            reply = chat(msgs)
-        except Exception as e:
-            history.append(f"step{step}: api-error {e}")
+        reply = None
+        for attempt in range(3):
+            try:
+                reply = chat(msgs)
+                break
+            except Exception as e:
+                history.append(f"step{step}: api-error({attempt}) {str(e)[:60]}")
+                time.sleep(5)
+        if reply is None:
             continue
+        if not isinstance(reply, str):
+            reply = "" if reply is None else str(reply)
+        kind, arg = parse_action(reply)
+        if not isinstance(reply, str):
+            reply = "" if reply is None else str(reply)
         kind, arg = parse_action(reply)
         history.append(f"step{step}: {kind} {arg[:80]}")
         if kind == "done":
@@ -69,9 +106,8 @@ def run_task(env, cfg):
         if kind == "pyautogui":
             env.controller.execute_python_command(arg)
         elif kind == "bash":
-            env.controller.execute_python_command(
-                f"import pyautogui,time; pyautogui.hotkey('ctrl','alt','t'); time.sleep(1); "
-                f"pyautogui.typewrite({arg!r}, interval=0.02); pyautogui.press('enter'); time.sleep(1)")
+            # reliable path: run via guest server directly, not GUI typing
+            env.controller.run_bash_script(arg, timeout=60)
         time.sleep(2)
     return env.evaluate(), history
 
