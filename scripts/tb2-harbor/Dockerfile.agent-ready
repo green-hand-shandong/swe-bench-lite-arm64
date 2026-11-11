@@ -1,0 +1,6 @@
+FROM tb2-arm64/adaptive-rejection-sampler:mswea3
+ENV OPENAI_API_KEY=adebf1cc83b2c455129205f8ec9885e9ec8da1d9004365ca \
+    OPENAI_BASE_URL=http://10.40.93.109:8788/v1 \
+    MSWEA_CONFIGURED=1 \
+    MSWEA_COST_TRACKING=ignore_errors \
+    PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
