@@ -207,3 +207,17 @@ curl http://127.0.0.1:15000/platform   # → Linux
 3. chrome 域再抽样 3-5 题（验证 pyautogui 坐标在 chromium 下的漂移程度）
 4. 把 QEMU provider 与 boot-vm.sh 上游化（OSWorld 官方 provider 工厂是
    开放结构，`create_vm_manager_and_provider` 加分支即可）
+
+## 附：2026-11-17 推理基建故障记录
+
+τ-bench/BFCL 出分过程中发现本机 NPU 推理栈整体故障（非评测工作引入）：
+
+1. 内网网关 10.40.93.109:8788 整体不可达（连接超时）
+2. 本机 Qwen3-8B w8a8 权重目录 /data1/models/Qwen3-8B 被外部清空
+3. 宿主 CANN toolkit（/usr/local/Ascend/cann-*）被移除，driver 升级至 25.5.1
+4. v0.23 vllm-ascend 镜像 torch_npu 与新驱动不兼容（autoload 失败/handle device 失败）
+5. nemotron-nano4b（v0.30 镜像 + BF16）反复崩溃重启（stream sync 错误 107027）
+
+影响：τ-bench / BFCL / OSWorld 的模型推理端点全部不可用，评测出分暂停。
+恢复路径：等宿主 CANN/驱动升级完成 → 用 v0.30 镜像 + BF16 权重重启（nemotron 模式已验证），
+或网关恢复后直接用网关端点（τ-bench/BFCL 管线均无需改动）。
