@@ -221,3 +221,13 @@ curl http://127.0.0.1:15000/platform   # → Linux
 影响：τ-bench / BFCL / OSWorld 的模型推理端点全部不可用，评测出分暂停。
 恢复路径：等宿主 CANN/驱动升级完成 → 用 v0.30 镜像 + BF16 权重重启（nemotron 模式已验证），
 或网关恢复后直接用网关端点（τ-bench/BFCL 管线均无需改动）。
+
+## 附：τ-bench retail 基线结果（2026-11-19，网关恢复后）
+
+- **端点**：新网关 http://10.40.92.149:8788/v1，qwen3.6-35b-a3b（agent 与用户模拟器同模型）
+- **retail 域 115 题**，tool-calling 策略，num_trials=1
+- **pass^1 口径（首轮无重试）**：17/23 抽样 = 73.9%（首轮因网关 502 中断，完成 23 题）
+- **累计口径（20 轮自动重跑，每题至少一次通过）**：94/115 = **81.7%**
+- 对照：官方论文 gpt-4o pass^1 约 60-65%；81.7% 的累计口径含多轮重试加成，两者口径不同需注明
+- 运行工程要点：网关 502 间歇故障 → 写了 20 轮自动重跑脚本（`scripts/taubench/`），每轮从断点续跑
+- 结果文件：`/data2/gxw/tau-bench/results/tool-calling-qwen3.6-35b-a3b-0.0_range_0--1_user-openai/`
