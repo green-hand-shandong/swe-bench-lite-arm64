@@ -8,20 +8,50 @@
   本地资源占用极小
 - 依赖安装走 uv + pnpm/yarn/tsx（Node 侧），ARM 全兼容
 
-## 实测结果（2026-11-19，首个任务跑通）
+## 实测结果（2026-11-19）
 
-**Time MCP 单服务器 2 题（arm_smoke_time.json），qwen3.6-35b-a3b（网关），ARM64 原生：**
+### 全量 single 档（56 题 / 28 服务器，qwen3.6-35b-a3b 网关，ARM64 原生）
+
+| 指标 | 值 |
+|---|---|
+| 任务执行成功 | **56/56 = 100%**（0 基础设施故障） |
+| Task Completion Score | 4.73/10 |
+| Tool Selection Score | 6.68/10 |
+| Planning Effectiveness | 4.16/10 |
+| Task Fulfillment / Grounding | 4.29 / 5.16 |
+| Tool Appropriateness / Parameter Accuracy | 6.66 / 6.70 |
+| Schema 合规 | 99.88% |
+| 有效工具名率 | 98.88% |
+| 工具调用成功率 | 92.59% |
+| 平均轮次 / 工具调用 | 6.4 轮 / 28.1 次每题 |
+| 平均 token | 112.8k/题 |
+| 耗时 | 136s 智能体 + 52s 判分 |
+
+> 注：56/56 是"执行管线无故障完成"口径；judge 分数（4.7/6.7/4.2）是
+> qwen3.6-35b-a3b 对 28 个异构服务器全量任务的真实水平——对照官方论文
+> （GPT-4o task completion ~6-7），符合"中等偏下开源模型"的预期定位。
+> 单服务器 smoke（Time MCP 2 题）曾得 9.6/9.8/8.6，说明分数差异主要来自
+> 任务复杂度（跨服务器/多跳任务拉低均分）。
+
+### 服务器连通性（check_all_servers.py）：26/28 直连可用
+
+- ✅ 26 个：OpenAPI Explorer(2) Unit Converter(16) Wikipedia(9) Google Maps(7)
+  Bibliomantic(4) Call for Papers(1) Car Price(3) Context7(2) DEX Paprika(11)
+  FruityVice(1) Game Trends(7) Huge Icons(3) Hugging Face(10) Math(13) NixOS(18)
+  OSINT(7) Reddit(2) National Parks(6) Medical Calculator(22) Met Museum(3)
+  Movie Recommender(1) NASA(21) OKX(2) Paper Search(19) Scientific Computing(26)
+  Weather(4) Time(2)
+- ⏳ 2 个待验：BioMCP（首次 uv sync 慢，预热后可通）、Google Maps（需真实
+  API key，无 key 时工具列表为空）
+
+### 首个 smoke（Time MCP 2 题）
 
 | 指标 | 值 |
 |---|---|
 | 任务完成率 | 2/2 = 100% |
-| Task Completion Score | 9.6/10 |
-| Tool Selection Score | 9.8/10 |
-| Planning Effectiveness | 8.59/10 |
-| Schema 合规 / 工具名有效 / 调用成功 | 100% / 100% / 100% |
+| Task Completion / Tool Selection | 9.6 / 9.8 |
+| Schema 合规 / 工具调用成功 | 100% / 100% |
 | 平均工具调用 | 15.5 次/题（2 轮） |
-| 耗时 | 76s 智能体 + 45s 判分 |
-| token | 16.5k/题 |
 
 ## 三个必打补丁（llm/agent 侧，与 ARM 无关但与自建推理端点有关）
 
@@ -70,8 +100,28 @@ params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
 
 connector 给 `StdioServerParameters` 传 `env=server_env or {}`——空 dict 会让
 stdio_client 用**完全空的环境**起子进程（没有 PATH），`python -m ...` 直接
-`FileNotFoundError`。改成 `env=server_env if server_env else None`，让
-`get_default_environment()`（继承 PATH/HOME 等）生效。
+`FileNotFoundError`。最终修法：显式构造 env = 父环境 + **venv bin 前置到
+PATH**（commands.json 的裸 `python` 要解析到带 mcp/fastmcp 的 venv），再合并
+server_env。
+
+### 4. 依赖矩阵（mcp / fastmcp / pydantic 三角）
+
+最终锁定：`mcp==1.19.0 + fastmcp==2.12.5 + pydantic==2.11.7`。
+- pydantic ≥2.12 删了 `eval_type_backport` → fastmcp/mcp 1.x 全挂
+- fastmcp 2.11 需要 `mcp.server.mcpserver`（2.x 命名）→ 与 1.x 冲突
+- fastmcp 2.12.5 需要 `IdentityAssertionParams`（mcp 1.19 才有）
+- 每次装新服务器后必须检查这三个版本没被 uv 联动升级
+
+### 5. resident-server 坑（`benchmark/runner.py`，已打补丁）
+
+`--distraction-count 0` 时 `commands_config` 保持 None，但 resident 服务器
+（Time MCP）查找会 `in None` 崩溃。改为禁用 distraction 时也加载
+commands_config。
+
+### 6. 外网 API 走代理
+
+wikipedia_mcp 直连 en.wikipedia.org 会挂起（无超时）。run-arm.sh 注入
+`HTTP(S)_PROXY=127.0.0.1:7890`，子进程 MCP 服务器继承后走代理，问题消失。
 
 ## 复现步骤
 
@@ -99,7 +149,8 @@ bash run-arm.sh --models custom-llm --tasks-file tasks/arm_smoke_time.json \
 
 ## 状态
 - ✅ 调研完成，ARM 兼容性确认
-- ✅ 三个 LLM 补丁 + stdio env 补丁，6/6 验证通过
-- ✅ 首个任务跑通（Time MCP 2 题，100%）
-- 待办：其余 26 个服务器逐个装依赖（Node 侧需 install.sh 实测）→
-  全量 28 服务器任务（single/2-server/3-server 三档）
+- ✅ 三个 LLM 补丁 + stdio env 补丁 + resident-server 补丁
+- ✅ 28 服务器依赖全装，26/28 连通验证
+- ✅ 全量 56 题 single 档跑完（56/56 执行成功，judge 指标见上）
+- 待办：multi_2server / multi_3server 两档任务；BioMCP 预热复验；
+  Google Maps 换真实 key
