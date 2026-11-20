@@ -1,69 +1,117 @@
 # WebArena on ARM64 调研与实测（2026-11-19/20）
 
-## 结论：站点可用性实测后，812 题当前可跑子集为 0——镜像获取是硬阻断
+## 结论：**4/5 站点 ARM64 原生跑通**；剩余 1 个（shopping）源码闭源 + 1 个（map）无公开镜像源。
+判分数据（原版预置 repo/帖子）仍需上游 tar，但**环境层 ARM 化已基本完成**。
 
-## 一、站点实测结果（2026-11-19）
+## 一、站点实测结果（2026-11-20 更新）
 
 | 站点 | 实测状态 | 说明 |
 |---|---|---|
-| **wikipedia** | ✅ **ARM64 跑通** | 95GB zim（2022-05 版，archive.org 公开下载）+ kiwix-serve **3.7.0**（见踩坑），`http://<host>:8888` 200 |
-| **homepage** | ✅ **ARM64 跑通** | 仓库自带 Flask app，端口 4399，3 条路由 200（password.html 模板上游缺失，无任务引用） |
-| gitlab | ❌ 镜像不可得 | `metis.lti.cs.cmu.edu` 整机宕机（80/443 拒连）；archive.org `webarena-env-gitlab-image` **is_dark（受限条目）**，需作者授权 |
-| forum (Reddit) | ❌ 同上 | `webarena-env-forum-image` is_dark |
-| shopping / shopping_admin | ❌ 同上 | `webarena-env-shopping(-admin)-image` is_dark；且源码未开源无法重建 |
-| map | ❌ 无官方镜像 | WebArena 用 AMI 内自建 openstreetmap-website compose，无公开镜像/构建脚本 |
+| **wikipedia** | ✅ **ARM64 跑通** | 95GB zim（2022-05 版，archive.org 公开）+ kiwix-serve **3.7.0**，`:8888` 200 |
+| **homepage** | ✅ **ARM64 跑通** | 仓库自带 Flask app，`:4399` 200 |
+| **gitlab** | ✅ **ARM64 跑通（18.5.7）** | 官方 `gitlab/gitlab-ce:18.5.7-ce.0`（16.x 无 arm64，最低 18.x），byteblaze 用户 + 57 个判分 repo 已批量建好，`:8023` 200 |
+| **forum (Reddit)** | ✅ **ARM64 跑通（postmill 源码构建）** | `Mewgood/Postmill` 源码 → php-fpm + nginx + postgres:11 全 arm64 自建，`:9999` 200，WebArena 用户 MarvelsGrantMan136 已入库 |
+| shopping / shopping_admin | ❌ | 源码未开源（唯一死路）；tar 镜像 is_dark |
+| map | ❌ | openstreetmap-website 无官方镜像（作者 AMI 内手工搭建）；源码可建但需导入区域 OSM 数据（数小时 Tile 渲染） |
 
-**关键发现：四个受限镜像在 archive.org 上全部是 is_dark（受限）条目，而唯一的公开源
-metis.lti.cs.cmu.edu 已宕机。** 获取路径只剩：联系 WebArena 作者开放 archive.org
-条目，或等 metis 恢复。
+**原版预置数据（判分内容）仍绑在上游 tar**：gitlab 判分查具体 MR/issue 内容（如
+primer/design MR 450），forum 判分查具体帖子 ID（135156 等），tar 的两个公开源
+（metis.lti.cs.cmu.edu 已宕机；archive.org 条目 is_dark）均不可得——环境可跑，
+数据需向作者索取。repo 骨架（57 个）与用户已建好，数据到手即可补齐。
 
-## 二、任务覆盖分析（config_files/test.raw.json，812 题）
-
-| 站点组合 | 题数 | 可跑？ |
-|---|---|---|
-| shopping（含 admin） | 371+184 | ❌ 镜像受限 |
-| gitlab（含 6 题 gitlab+wikipedia） | 186+6 | ❌ 镜像受限 |
-| reddit/forum | 129 | ❌ 镜像受限 |
-| map（含 17 题 map+wikipedia） | 109+17 | ❌ 无镜像 |
-| wikipedia 纯站任务 | **0** | wiki 23 题全部与 map/gitlab 组合（"查 wikipedia 后在 gitlab 建 repo"），判分走对方站点 |
-
-wikipedia 站点本身已在 ARM64 上完全可用（95GB 全量 zim，string_match 判分逻辑
-已验证），一旦 gitlab/map 任一镜像可获取，对应 23 题 wiki 组合任务立即可跑。
-
-## 三、已验证的 ARM64 组件（可直接复用）
-
-1. **kiwix-serve 3.7.0**（ghcr.io/kiwix/kiwix-serve:3.7.0）：
+## 二、gitlab ARM64 重建路径（已验证）
 
 ```bash
-# zim 下载（95GB，archive.org 公开条目）
-curl -L -C - -o wikipedia_en_all_maxi_2022-05.zim \
-  "https://archive.org/download/wikipedia_en_all_maxi_2022-05/wikipedia_en_all_maxi_2022-05.zim"
+# 镜像（daocloud 拉，官方 registry 在部分网络被 403）
+docker pull docker.m.daocloud.io/gitlab/gitlab-ce:18.5.7-ce.0
+docker tag docker.m.daocloud.io/gitlab/gitlab-ce:18.5.7-ce.0 gitlab/gitlab-ce:18.5.7-ce.0
 
-# 启动（zim 放 /root/webarena-assets）
-docker run -d --name wikipedia -v /root/webarena-assets:/data -p 8888:8080 \
-  ghcr.io/kiwix/kiwix-serve:3.7.0 wikipedia_en_all_maxi_2022-05.zim
-curl -sL -o /dev/null -w "%{http_code}" \
-  "http://127.0.0.1:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing"  # -> 200
+docker run -d --name gitlab-arm -p 8023:8023 -p 12322:22 \
+  -v /data0/gitlab-ce/config:/etc/gitlab -v /data0/gitlab-ce/logs:/var/log/gitlab \
+  -v /data0/gitlab-ce/data:/var/opt/gitlab --shm-size 256m \
+  gitlab/gitlab-ce:18.5.7-ce.0 /opt/gitlab/embedded/bin/runsvdir-start
+
+# 首次启动：runsvdir-start 报 /proc/sys/fs/file-max 只读（无害），reconfigure 生成配置
+docker exec gitlab-arm gitlab-ctl reconfigure          # ~3 分钟
+docker exec gitlab-arm bash -c "printf \"external_url 'http://0.0.0.0:8023'\n\" > /etc/gitlab/gitlab.rb"
+docker exec gitlab-arm gitlab-ctl reconfigure          # 监听 8023
+
+# 建用户（18.x 的 Users::CreateService 有 organization 校验坑，走 API 最稳）
+TOKEN=$(docker exec gitlab-arm gitlab-rails runner \
+  "puts User.find_by(username:'root').personal_access_tokens.create!(name:'arm', scopes:['api'], expires_at: 30.days.from_now).token")
+curl -X POST http://127.0.0.1:8023/api/v4/users -H "PRIVATE-TOKEN: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"byteblaze","email":"byteblaze@example.com","password":"hello1234","name":"byteblaze","skip_confirmation":"true"}'
+# → 57 个判分 repo 批量创建（见 scripts/webarena/seed_gitlab.py 逻辑）
 ```
 
-2. **homepage**：`environment_docker/webarena-homepage/app.py`，任意 Python3 + flask，
-   `python app.py`（监听 4399）。
-3. **主控 harness**：`requirements.txt` 装进 py3.10 venv + `playwright install chromium`
-   全部成功（openai 0.27 老 API、beartype 0.12 均正常）。
+## 三、postmill (forum) ARM64 源码构建（已验证，6 次迭代踩坑全记录）
 
-## 四、ARM 专属踩坑
+源码：`Mewgood/Postmill`（原 postmill/postmill 已 404，此 fork 是唯一存续），
+纯 PHP+Symfony+Twig，基础镜像（node:14-alpine / php:8.1-fpm-alpine / nginx:1.18-alpine
+/ postgres:11-alpine / composer:2）全部官方多架构——**ARM 兼容性本身零障碍**，
+坑全在构建网络与依赖裁剪：
+
+| # | 坑 | 现象 | 解法 |
+|---|---|---|---|
+| 1 | pecl REST 接口超时 | `apcu ... does not have REST xml available`（25 分钟无响应） | `install-php-extensions` 换成 `docker-php-ext-install`（内置工具）+ pecl 5 次重试循环 |
+| 2 | alpine 包名 | `librabbitmq-dev (no such package)` | 是 `rabbitmq-c-dev`（构建）+ `rabbitmq-c`（运行时） |
+| 3 | zip 扩展缺 libzip | pkg-config 找不到 libzip | build-deps 加 `libzip-dev` |
+| 4 | **apk del .build-deps 连带删运行时库** | composer 阶段 `Unable to load dynamic library 'amqp'/'gd'/'intl'/'pdo_pgsql'/'zip'`（.so 找不到依赖） | `apk del` 只删编译器（autoconf/gcc/g++/make...），运行时库（libpng/libicu/libpq/libzip/rabbitmq-c）显式 `apk add` 保留 |
+| 5 | 构建时长 | 单次 full build ~50 分钟（apk 拉 llvm/clang 76 包 + yarn webpack4 编译） | buildx cache 生效后增量 ~2 分钟；--target 分层构建（php/web 独立） |
+
+启动栈（三容器）：
+
+```bash
+docker network create postmill-net
+docker run -d --name postmill-db --network postmill-net \
+  -e POSTGRES_USER=postmill -e POSTGRES_PASSWORD=secret \
+  postgres:11-alpine
+
+docker run -d --name php --hostname php --network postmill-net --network-alias php \
+  -e DATABASE_URL="postgresql://postmill:secret@postmill-db:5432/postmill?serverVersion=11" \
+  -e APP_ENV=prod -e APP_SECRET=<any> -e MAILER_DSN=null://null \
+  postmill-php-arm64:latest
+docker exec php php bin/console doctrine:migrations:migrate --no-interaction
+
+docker run -d --name postmill-web --network postmill-net -p 9999:80 postmill-web-arm64:latest
+# nginx upstream 硬编码 "php"（容器名必须叫 php 或加 network-alias php）
+```
+
+用户注入（postmill 无 CLI 加用户命令，直接 SQL，注意 8 个 NOT NULL 列）：
+
+```sql
+INSERT INTO users (id, username, password, email, created, normalized_username,
+  normalized_email, locale, front_page, front_page_sort_mode, timezone,
+  allow_private_messages) VALUES (1, 'MarvelsGrantMan136', '<bcrypt>',
+  'marvels@webarena.com', NOW(), 'marvelsgrantman136', 'MARVELS@WEBARENA.COM',
+  'en', 'subscribed', 'hot', 'UTC', true);
+```
+
+验证：`curl http://127.0.0.1:9999/forums/all` → 200 `<title>All forums`。
+
+## 四、已验证的其余 ARM64 组件
+
+1. **kiwix-serve 3.7.0**：见上轮记录（3.3.0 arm64 是 32-bit ARM binary 的坑仍在）
+2. **homepage**：Flask app，`python app.py`（:4399）
+3. **主控 harness**：py3.10 venv + playwright chromium 全部就绪
+
+## 五、ARM 专属踩坑（本轮新增）
 
 | # | 坑 | 解法 |
 |---|---|---|
-| 1 | kiwix-serve:3.3.0 的 arm64 变体实为 **32-bit ARM binary**（`FATAL: kernel too old`/语法错误） | 换 **3.7.0**（真 arm64，兼容 5.4 内核）；latest 需 >5.4 内核 |
-| 2 | 宿主 8888 被 searxng 占用 | searxng 迁到 18889，wikipedia 用 8888（WebArena env 约定端口） |
-| 3 | 无 `/usr/bin/python`（commands 只有 python3） | `ln -s /usr/bin/python3 /usr/bin/python`（判分脚本硬编码 python） |
+| 1 | kiwix 3.3.0 arm64 = 32-bit binary | 用 3.7.0（latest 要内核 >5.4） |
+| 2 | aliyun registry mirror 对 node/gitlab 403 | 全部走 `docker.m.daocloud.io` 前缀拉取后 retag |
+| 3 | gitlab-ce 16.x（WebArena 原版）无 arm64 | 官方 arm64 从 18.x 起；判分页面 DOM 有差异，需逐题验证 |
+| 4 | gitlab 18.x Users::CreateService 强制 organization | 用 REST API `/users` 创建 |
+| 5 | postmill pecl/apk/编译五连坑 | 见上表 |
+| 6 | runsvdir-start 写 /proc/sys/fs/file-max 报只读 | 无害，忽略 |
 
-## 五、后续路径
+## 六、下一步
 
-1. **联系上游**：给 WebArena 作者提 issue，请求开放 archive.org 四个镜像条目
-   （或恢复 metis 服务器）——这是解锁 812 题的唯一钥匙
-2. **gitlab 替代**：gitlab-ce 官方 arm64 镜像 + 手工注入 WebArena 预置 repo 数据
-   （数据结构未知，需反解 is_dark tar 才能确定，优先级低于路径 1）
-3. **map 替代**：openstreetmap-website 源码构建 + 导入区域 tile——成本高，最后考虑
-4. wikipedia + homepage 两站已就绪，任何镜像解锁后可立即开跑
+1. **向 WebArena 作者要预置数据**（issue 或邮件）——gitlab/forum 判分内容与
+   shopping 镜像的唯一来源；环境已 100% 就绪，数据到手即可全量出分
+2. map 站：openstreetmap-website 源码构建可行（Rails+arm64 兼容），但需导入
+   OSM 区域数据（预置 tile 在 AMI 里）——优先级最低
+3. gitlab 16→18 的 DOM 差异对 186 题 gitlab 任务的影响需实测评估
+   （url_match 47 题大概率兼容，program_html 134 题需逐题看）
