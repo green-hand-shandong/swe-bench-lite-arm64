@@ -44,6 +44,25 @@
 - ⏳ 2 个待验：BioMCP（首次 uv sync 慢，预热后可通）、Google Maps（需真实
   API key，无 key 时工具列表为空）
 
+### 多服务器档（2026-11-19 晚跑完，qwen3.6-35b-a3b）
+
+| 指标 | 2-server（30 题） | 3-server（18 题） |
+|---|---|---|
+| 执行成功 | 30/30 | 18/18 |
+| Task Completion | 4.25 | 4.20 |
+| Tool Selection | 5.74 | 6.03 |
+| Planning Effectiveness | 3.37 | 3.73 |
+| Schema 合规 | 99.6% | 99.5% |
+| 工具调用成功率 | 91.5% | 91.6% |
+| 平均轮次 / 调用 | 12.6 轮 / 54.4 次 | 11.9 轮 / 50.6 次 |
+| 平均 token | 264k | 308k |
+| 耗时 | 231s+51s | 216s+48s |
+
+> 三档对比：single 4.73 → 2-server 4.25 → 3-server 4.20（task completion），
+> 跨服务器编排对开源中等模型是明显难点（planning 分从 4.16 掉到 3.4），
+> 但执行管线（schema/工具名/调用成功率）三档都稳定在 99%/98%/92% 上下——
+> **基础设施不随任务复杂度劣化**，掉分全部来自模型能力。
+
 ### 首个 smoke（Time MCP 2 题）
 
 | 指标 | 值 |
@@ -151,6 +170,5 @@ bash run-arm.sh --models custom-llm --tasks-file tasks/arm_smoke_time.json \
 - ✅ 调研完成，ARM 兼容性确认
 - ✅ 三个 LLM 补丁 + stdio env 补丁 + resident-server 补丁
 - ✅ 28 服务器依赖全装，26/28 连通验证
-- ✅ 全量 56 题 single 档跑完（56/56 执行成功，judge 指标见上）
-- 待办：multi_2server / multi_3server 两档任务；BioMCP 预热复验；
-  Google Maps 换真实 key
+- ✅ **三档全量跑完：single 56/56 + 2-server 30/30 + 3-server 18/18 = 104/104**
+- 待办：BioMCP 预热复验；Google Maps 换真实 key
