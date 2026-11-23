@@ -146,3 +146,14 @@ program_html 判分（读 README raw 内容比对）。
 bash run-arm.sh --test_start_idx 556 --test_end_idx 562
 # 结果在 results-arm/（*.html + traces/*.zip）
 ```
+
+### forum 站首批 resolved（2026-11-23）
+
+task 595/596（订阅 trending post，url_match 判分）——**2/2 resolved，Average score 1.0**。
+这是 WebArena 在 ARM64 上首批判分通过的任务。
+
+postmill 数据注入要点（直接 SQL，34 版块 + 102 帖）：
+- `forums` 表需填 `sidebar`（NOT NULL，缺了版块页 500）
+- `submissions` 有 CHECK：`media_type='url'` 或 `media_type='image' AND image_id IS NOT NULL`
+- 版块名从任务 intent/判分 URL 提取（34 个：space/books/consoles/...）
+- 每版块 3 帖（ranking 递减模拟 trending）
