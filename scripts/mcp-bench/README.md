@@ -41,8 +41,9 @@
   OSINT(7) Reddit(2) National Parks(6) Medical Calculator(22) Met Museum(3)
   Movie Recommender(1) NASA(21) OKX(2) Paper Search(19) Scientific Computing(26)
   Weather(4) Time(2)
-- ⏳ 2 个待验：BioMCP（首次 uv sync 慢，预热后可通）、Google Maps（需真实
-  API key，无 key 时工具列表为空）
+- ⏳ 1 个：Google Maps（需真实 GOOGLE_MAPS_API_KEY，凭据问题非 ARM 问题）。
+  BioMCP 预热后已通（35 工具）。**27/28 连通**；Google Maps 涉及 10/104 题
+  （9.6%），跑分时以"工具调用失败"计入，schema/工具名指标不受影响。
 
 ### 多服务器档（2026-11-19 晚跑完，qwen3.6-35b-a3b）
 
