@@ -115,3 +115,34 @@ INSERT INTO users (id, username, password, email, created, normalized_username,
    OSM 区域数据（预置 tile 在 AMI 里）——优先级最低
 3. gitlab 16→18 的 DOM 差异对 186 题 gitlab 任务的影响需实测评估
    （url_match 47 题大概率兼容，program_html 134 题需逐题看）
+
+## 七、端到端 agent 基线（2026-11-23，ARM64 全链路打通）
+
+**首批 6 题（gitlab+wikipedia 组合，task 556-561）在 ARM64 上完整跑通**：
+playwright chromium 驱动 → qwen3.6-35b-a3b（网关）→ gitlab 写 repo → 官方
+program_html 判分（读 README raw 内容比对）。
+
+| 项 | 结果 |
+|---|---|
+| 任务执行 | 6/6 出分（5 题正常走完 15 步上限，1 题 gitlab 导航超时） |
+| LLM/基础设施错误 | 0 |
+| 判分 | 0/6 resolved（长 horizon 任务对 35B 模型属预期；管线验证是本轮目的） |
+| trace | playwright trace.zip + network + 截图全量落盘 |
+
+### 接入踩坑（harness 侧，ARM 无关但网关相关）
+
+| # | 坑 | 解法 |
+|---|---|---|
+| 1 | `config_files/{i}.json` 里 `__GITLAB__` 等占位符未替换 | 跑 `scripts/generate_test_data.py`（需 `PYTHONPATH=.` + 7 个站点 env） |
+| 2 | `storage_state` 登录态缺失 → env.reset 直接 AssertionError | 先 `python -m browser_env.auto_login --site_list gitlab`（.auth 目录要预建） |
+| 3 | run.py 用 `"python"` 起 cookie-renew 子进程且不传 env | patch 成 `sys.executable` + 显式 `PYTHONPATH` |
+| 4 | tiktoken 不认识自定义模型名 | Tokenizer 回退 `cl100k_base` |
+| 5 | **网关拒绝连续多条 system 消息**（400 请求参数错误） | 请求前把连续 system 合并为一条（已 patch 到 openai_utils） |
+| 6 | openai 0.27 + 网关 | `openai.api_base` + `extra_body.chat_template_kwargs.enable_thinking=false` |
+
+### 复现
+
+```bash
+bash run-arm.sh --test_start_idx 556 --test_end_idx 562
+# 结果在 results-arm/（*.html + traces/*.zip）
+```
