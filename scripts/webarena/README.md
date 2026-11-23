@@ -157,3 +157,10 @@ postmill 数据注入要点（直接 SQL，34 版块 + 102 帖）：
 - `submissions` 有 CHECK：`media_type='url'` 或 `media_type='image' AND image_id IS NOT NULL`
 - 版块名从任务 intent/判分 URL 提取（34 个：space/books/consoles/...）
 - 每版块 3 帖（ranking 递减模拟 trending）
+
+### ARM64 累计小基线（8 题）
+
+| 任务组 | 题数 | resolved | 备注 |
+|---|---|---|---|
+| gitlab+wikipedia（写 README） | 6 | 0/6 | 长 horizon；1 题 gitlab 导航超时 |
+| forum subscribe（trending post） | 5 | 2/5 | **Average 0.4**；machinelearning 版块名带空格（intent 写 "machine learning"，版块实际 machinelearning）是主要失分点 |
